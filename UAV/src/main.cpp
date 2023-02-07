@@ -10,10 +10,6 @@
 //#include <gps>
 //#include "Adafruit_BMP3XX.h"
 
-  #define BMP_SCK
-  #define BMP_MISO
-  #define BMP_MOSI
-  #define BMP_CS
   #define SEALEVELPRESSURE_HPA (1013.25)
 // Adafruit_BMP3XX bmp; //bmp390
 
@@ -34,28 +30,23 @@ void setup()
   }
   */
   analogWriteFrequency(2, 250);
-  analogWriteFrequency(3, 250);
-  analogWriteFrequency(4, 250);
-  analogWriteFrequency(5, 250);
   analogWriteResolution(12);
-  delay(250); 
+  delay(1250); 
+  analogWrite(2, 1024);
+  delay(2000);
+  analogWrite(2, 2047);
+  delay(2000);
+  analogWrite(2, 1024);
+  delay(3000);
 }
 
 void loop() 
 {
-  if (output < 1500)
+ //analogwrite(2,2047);
+ 
+  if (output < 2047)
   {
     output += 1;
   }
-  else 
-  {
-    output = 1024;
-  }
-
   analogWrite(2, output);
-  analogWrite(3, output);
-  analogWrite(4, output);
-  analogWrite(5, output);
-
-  delay(10);
 }
