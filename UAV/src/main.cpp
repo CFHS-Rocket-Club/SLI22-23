@@ -66,24 +66,6 @@ void setup()
 void loop()
 {
     uint32_t time = micros();
-    // analogwrite(2,2047);
-
-    if (motorMode == ArmRampUp)
-    {
-        if (output < 1472)
-        {
-            output += 1;
-        }
-        else
-        {
-            output = 1472;
-            motorMode = Operate;
-            Serial.println("Ramp Up Done");
-        }
-    }
-
-    esc.writeMicroseconds(output);
-
     
     if (! bmp.performReading())
     {
@@ -98,6 +80,22 @@ void loop()
     {
         Serial.println("Failed to perform gyro reading");
     }
+
+    if (motorMode == ArmRampUp)
+    {
+        if (output < 1488)
+        {
+            output += 1;
+        }
+        else
+        {
+            output = 1488 + 68;
+            motorMode = Operate;
+            Serial.println("Ramp Up Done");
+        }
+    }
+
+    esc.writeMicroseconds(output);
     
     if (time - printTime > 2000000)
     {
@@ -106,37 +104,34 @@ void loop()
         Serial.print("Temp: ");
         Serial.print((bmp.temperature * 1.8) + 32);
         Serial.println(" F");
-        Serial.println();
         Serial.print("Pres.: ");
         Serial.print(bmp.pressure / 100.0);
         Serial.println(" hPa");
-        Serial.println();
         Serial.print("Alt: ");
         Serial.print(bmp.readAltitude(SEALEVELPRESSURE_HPA) * 3.28084);
         Serial.println(" ft");
 
-        Serial.print("\t\tTemperature ");
-        Serial.print(temp.temperature);
-        Serial.println(" deg C");
+        Serial.print("Temperature ");
+        Serial.print((temp.temperature) * 1.8 + 32);
+        Serial.println(" F");
 
         /* Display the results (acceleration is measured in m/s^2) */
-        Serial.print("\t\tAccel X: ");
+        Serial.print("Accel X: ");
         Serial.print(accel.acceleration.x);
-        Serial.print(" \tY: ");
+        Serial.print("\tY: ");
         Serial.print(accel.acceleration.y);
-        Serial.print(" \tZ: ");
+        Serial.print("\tZ: ");
         Serial.print(accel.acceleration.z);
-        Serial.println(" m/s^2 ");
+        Serial.println(" m/s^2");
 
         /* Display the results (rotation is measured in rad/s) */
-        Serial.print("\t\tGyro X: ");
+        Serial.print("Gyro X: ");
         Serial.print(gyro.gyro.x);
-        Serial.print(" \tY: ");
+        Serial.print("\tY: ");
         Serial.print(gyro.gyro.y);
-        Serial.print(" \tZ: ");
+        Serial.print("\tZ: ");
         Serial.print(gyro.gyro.z);
         Serial.println(" radians/s ");
-        Serial.println();
     }
 
     delay(10);
