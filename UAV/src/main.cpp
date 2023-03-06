@@ -11,20 +11,24 @@
 
 Adafruit_BMP3XX bmp; //bmp390
 Adafruit_LSM6DSO32 dso32;
-Servo esc;
+Servo escFL;
+Servo escFR;
+Servo escBL;
+Servo escBR;
 
-int output = 1000;
+int output = 1488;
+
 uint32_t printTime = 0;
+uint32_t motorTime = 0;
+uint32_t armTime = 0;
 
 enum MotorMode
 {
-    ArmRampUp,
-    ArmRampDown,
-    Pause,
+    Arm,
     Operate,
 };
 
-MotorMode motorMode = ArmRampUp;
+MotorMode motorMode = Arm;
 
 void setup()
 {
@@ -48,26 +52,49 @@ void setup()
         while (true) {}
     }
 
-    dso32.setAccelRange(LSM6DSO32_ACCEL_RANGE_8_G);
-    dso32.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
-    dso32.setAccelDataRate(LSM6DS_RATE_12_5_HZ);
+    dso32.setAccelRange(LSM6DSO32_ACCEL_RANGE_4_G);
+    dso32.setGyroRange(LSM6DS_GYRO_RANGE_500_DPS);
+    dso32.setAccelDataRate(LSM6DS_RATE_52_HZ);
     dso32.setGyroDataRate(LSM6DS_RATE_12_5_HZ);
 
+    escFL.attach(2);
+    escFR.attach(3);
+    escBL.attach(4);
+    escBR.attach(5);
 
-    esc.attach(2);
+    escFL.writeMicroseconds(output);
+    escFR.writeMicroseconds(output);
+    escBL.writeMicroseconds(output);
+    escBR.writeMicroseconds(output);
 
-    delay(500);
+    armTime = millis();
 
-    Serial.println("Delay Complete");
-
-    
 }
 
 void loop()
 {
     uint32_t time = micros();
+
+    if (Serial.available())
+    {
+        char serialInput = Serial.read();
+        if (strcmp(&serialInput, "s") == 0)
+        {
+            output = 1488;
+        }
+
+        if (strcmp(&serialInput, "a") == 0)
+        {
+            output -= 2;
+        }
+
+        if (strcmp(&serialInput, "d") == 0)
+        {
+            output += 2;
+        }
+    }
     
-    if (! bmp.performReading())
+    if (!bmp.performReading())
     {
         Serial.println("Failed to perform altimeter reading");
     }
@@ -81,21 +108,21 @@ void loop()
         Serial.println("Failed to perform gyro reading");
     }
 
-    if (motorMode == ArmRampUp)
+    if (time - motorTime > 10000)
     {
-        if (output < 1488)
+        motorTime = time;
+
+        if (millis() - armTime > 15000)
         {
-            output += 1;
-        }
-        else
-        {
-            output = 1488 + 68;
             motorMode = Operate;
-            Serial.println("Ramp Up Done");
         }
     }
 
-    esc.writeMicroseconds(output);
+    escFL.writeMicroseconds(output);
+    escFR.writeMicroseconds(output);
+    escBL.writeMicroseconds(output);
+    escBR.writeMicroseconds(output);
+
     
     if (time - printTime > 2000000)
     {
@@ -133,6 +160,4 @@ void loop()
         Serial.print(gyro.gyro.z);
         Serial.println(" radians/s ");
     }
-
-    delay(10);
 }
