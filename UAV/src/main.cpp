@@ -11,6 +11,7 @@
 
 Adafruit_BMP3XX bmp; //bmp390
 Adafruit_LSM6DSO32 dso32;
+
 Servo escFL;
 Servo escFR;
 Servo escBL;
@@ -21,6 +22,14 @@ int output = 1488;
 uint32_t printTime = 0;
 uint32_t motorTime = 0;
 uint32_t armTime = 0;
+uint32_t lastTime = 0;
+
+double velocityX;
+double velocityY;
+double velocityZ;
+double gyroPitch;
+double gyroRoll;
+double gyroYaw;
 
 enum MotorMode
 {
@@ -29,6 +38,59 @@ enum MotorMode
 };
 
 MotorMode motorMode = Arm;
+
+void updateGyro()
+{
+
+}
+
+void printData(sensors_event_t temp, sensors_event_t accel, sensors_event_t gyro)
+{
+        Serial.println();
+        Serial.print("Temp: ");
+        Serial.print((bmp.temperature * 1.8) + 32);
+        Serial.println(" F");
+        Serial.print("Pres.: ");
+        Serial.print(bmp.pressure / 100.0);
+        Serial.println(" hPa");
+        Serial.print("Alt: ");
+        Serial.print(bmp.readAltitude(SEALEVELPRESSURE_HPA) * 3.28084);
+        Serial.println(" ft");
+
+        Serial.print("Temperature ");
+        Serial.print((temp.temperature) * 1.8 + 32);
+        Serial.println(" F");
+
+        /* Display the results (acceleration is measured in m/s^2) */
+        Serial.print("Accel X: ");
+        Serial.print(accel.acceleration.x);
+        Serial.print("\tY: ");
+        Serial.print(accel.acceleration.y);
+        Serial.print("\tZ: ");
+        Serial.print(accel.acceleration.z);
+        Serial.println(" m/s^2");
+
+        /* Display the results (rotation is measured in rad/s) */
+        Serial.print("Gyro X: ");
+        Serial.print(gyro.gyro.x);
+        Serial.print("\tY: ");
+        Serial.print(gyro.gyro.y);
+        Serial.print("\tZ: ");
+        Serial.print(gyro.gyro.z);
+        Serial.println(" radians/s ");
+
+        Serial.print("Pitch: ");
+        Serial.print(gyroPitch);
+        Serial.print("\tRoll: ");
+        Serial.println(gyroRoll);
+
+        Serial.println(output);
+}
+
+void setMotor(Servo motor, double percentOutput)
+{
+
+}
 
 void setup()
 {
@@ -67,7 +129,11 @@ void setup()
     escBL.writeMicroseconds(output);
     escBR.writeMicroseconds(output);
 
-    armTime = millis();
+    uint32_t time = millis();
+
+    lastTime = time;
+    armTime = time;
+    printTime = time;
 
 }
 
@@ -85,12 +151,12 @@ void loop()
 
         if (strcmp(&serialInput, "a") == 0)
         {
-            output -= 2;
+            output -= 1;
         }
 
         if (strcmp(&serialInput, "d") == 0)
         {
-            output += 2;
+            output += 1;
         }
     }
     
@@ -108,11 +174,14 @@ void loop()
         Serial.println("Failed to perform gyro reading");
     }
 
+    gyroRoll=-atan(accel.acceleration.x/sqrt(accel.acceleration.y*accel.acceleration.y+accel.acceleration.z*accel.acceleration.z))*1/(3.142/180);
+    gyroPitch=atan(accel.acceleration.y/sqrt(accel.acceleration.x*accel.acceleration.x+accel.acceleration.z*accel.acceleration.z))*1/(3.142/180);
+
     if (time - motorTime > 10000)
     {
         motorTime = time;
 
-        if (millis() - armTime > 15000)
+        if (millis() - armTime > 10000)
         {
             motorMode = Operate;
         }
@@ -122,42 +191,12 @@ void loop()
     escFR.writeMicroseconds(output);
     escBL.writeMicroseconds(output);
     escBR.writeMicroseconds(output);
-
     
-    if (time - printTime > 2000000)
+    if (time - printTime > 1000000)
     {
         printTime = time;
-        Serial.println();
-        Serial.print("Temp: ");
-        Serial.print((bmp.temperature * 1.8) + 32);
-        Serial.println(" F");
-        Serial.print("Pres.: ");
-        Serial.print(bmp.pressure / 100.0);
-        Serial.println(" hPa");
-        Serial.print("Alt: ");
-        Serial.print(bmp.readAltitude(SEALEVELPRESSURE_HPA) * 3.28084);
-        Serial.println(" ft");
-
-        Serial.print("Temperature ");
-        Serial.print((temp.temperature) * 1.8 + 32);
-        Serial.println(" F");
-
-        /* Display the results (acceleration is measured in m/s^2) */
-        Serial.print("Accel X: ");
-        Serial.print(accel.acceleration.x);
-        Serial.print("\tY: ");
-        Serial.print(accel.acceleration.y);
-        Serial.print("\tZ: ");
-        Serial.print(accel.acceleration.z);
-        Serial.println(" m/s^2");
-
-        /* Display the results (rotation is measured in rad/s) */
-        Serial.print("Gyro X: ");
-        Serial.print(gyro.gyro.x);
-        Serial.print("\tY: ");
-        Serial.print(gyro.gyro.y);
-        Serial.print("\tZ: ");
-        Serial.print(gyro.gyro.z);
-        Serial.println(" radians/s ");
+        printData(temp, accel, gyro);
     }
+
+    lastTime = time;
 }
