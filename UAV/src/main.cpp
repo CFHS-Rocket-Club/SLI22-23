@@ -39,6 +39,12 @@ enum MotorMode
 
 MotorMode motorMode = Arm;
 
+
+double pidCalculate(double input, double setpoint, double p, double i, double d, double &prevError, double &errorSum)
+{
+    double error = setpoint - input;
+}
+
 void updateGyro()
 {
 
