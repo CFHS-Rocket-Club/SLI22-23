@@ -34,20 +34,32 @@ double gyroYaw;
 enum MotorMode
 {
     Arm,
-    Operate,
+    Disabled,
+    Enabled
 };
 
 MotorMode motorMode = Arm;
 
+double rollSum;
+double rollPrev;
+double pitchSum = 0.0;
+double pitchPrev = 0.0;
+double yawSum;
+double yawPrev;
+double altSum;
+double altPrev;
 
-double pidCalculate(double input, double setpoint, double p, double i, double d, double &prevError, double &errorSum)
+double pidCalculate(double input, double setpoint, double p, double i, double d, double * const &prevError, double * const &errorSum, double timeDiff)
 {
     double error = setpoint - input;
-}
 
-void updateGyro()
-{
+    *errorSum += error * timeDiff;
 
+    double pTerm = p * error;
+    double iTerm = i * *errorSum;
+    double dTerm = d * (error - *prevError) * timeDiff;
+
+    return pTerm + iTerm + dTerm;
 }
 
 void printData(sensors_event_t temp, sensors_event_t accel, sensors_event_t gyro)
@@ -95,7 +107,8 @@ void printData(sensors_event_t temp, sensors_event_t accel, sensors_event_t gyro
 
 void setMotor(Servo motor, double percentOutput)
 {
-
+    percentOutput = (percentOutput > 1.0) ? 1.0 : (percentOutput < -1.0) ? -1.0 : percentOutput;
+    motor.writeMicroseconds((int) (1488 + percentOutput*25));
 }
 
 void setup()
@@ -183,20 +196,39 @@ void loop()
     gyroRoll=-atan(accel.acceleration.x/sqrt(accel.acceleration.y*accel.acceleration.y+accel.acceleration.z*accel.acceleration.z))*1/(3.142/180);
     gyroPitch=atan(accel.acceleration.y/sqrt(accel.acceleration.x*accel.acceleration.x+accel.acceleration.z*accel.acceleration.z))*1/(3.142/180);
 
+    double alt = bmp.readAltitude(SEALEVELPRESSURE_HPA);
+
     if (time - motorTime > 10000)
     {
         motorTime = time;
 
         if (millis() - armTime > 10000)
         {
-            motorMode = Operate;
+            motorMode = Disabled;
         }
     }
 
-    escFL.writeMicroseconds(output);
-    escFR.writeMicroseconds(output);
-    escBL.writeMicroseconds(output);
-    escBR.writeMicroseconds(output);
+    double timeDiff = (double)(time-lastTime) / 1000000.0;
+
+    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.0, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff);
+    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.0, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
+    double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.0, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
+    double altOutput   = pidCalculate(alt,       0.0, 0.0, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.3;
+
+    if (motorMode == Enabled)
+    {
+        setMotor(escFL, altOutput + rollOuput + pitchOutput + yawOutput);
+        setMotor(escFR, altOutput - rollOuput + pitchOutput - yawOutput);
+        setMotor(escBL, altOutput + rollOuput - pitchOutput + yawOutput);
+        setMotor(escBR, altOutput - rollOuput - pitchOutput - yawOutput);
+    }
+    else
+    {
+        setMotor(escFL, 0.0);
+        setMotor(escFR, 0.0);
+        setMotor(escBL, 0.0);
+        setMotor(escBR, 0.0);
+    }
     
     if (time - printTime > 1000000)
     {
