@@ -24,6 +24,8 @@ uint32_t motorTime = 0;
 uint32_t armTime = 0;
 uint32_t lastTime = 0;
 
+double altitudeSepoint = 0.0;
+
 double velocityX;
 double velocityY;
 double velocityZ;
@@ -73,7 +75,8 @@ void printData(sensors_event_t temp, sensors_event_t accel, sensors_event_t gyro
         Serial.println(" hPa");
         Serial.print("Alt: ");
         Serial.print(bmp.readAltitude(SEALEVELPRESSURE_HPA) * 3.28084);
-        Serial.println(" ft");
+        Serial.print(" ft ");
+        Serial.println(altitudeSepoint * 3.28084);
 
         Serial.print("Temperature ");
         Serial.print((temp.temperature) * 1.8 + 32);
@@ -102,13 +105,45 @@ void printData(sensors_event_t temp, sensors_event_t accel, sensors_event_t gyro
         Serial.print("\tRoll: ");
         Serial.println(gyroRoll);
 
-        Serial.println(output);
+        switch (motorMode)
+        {
+        case Arm:
+            Serial.println(output);
+            break;
+
+        case Disabled:
+            Serial.println("Disabled");
+            break;
+
+        case Enabled:
+            Serial.println("Enabled");
+        
+        default:
+            break;
+        }
+        
 }
 
 void setMotor(Servo motor, double percentOutput)
 {
+    // 1488 - 1832
     percentOutput = (percentOutput > 1.0) ? 1.0 : (percentOutput < -1.0) ? -1.0 : percentOutput;
-    motor.writeMicroseconds((int) (1488 + percentOutput*25));
+    motor.writeMicroseconds((int) (1488 + percentOutput*69 ) - (percentOutput < 0 ? 30 : 0));
+}
+
+void setMotor(Servo motor, double percentOutput, boolean invert)
+{
+    if (percentOutput < 0.0)
+    {
+        percentOutput = 0.0;
+    }
+
+    if (invert)
+    {
+        percentOutput *= -1;
+    }
+    
+    setMotor(motor, percentOutput);
 }
 
 void setup()
@@ -138,10 +173,10 @@ void setup()
     dso32.setAccelDataRate(LSM6DS_RATE_52_HZ);
     dso32.setGyroDataRate(LSM6DS_RATE_12_5_HZ);
 
-    escFL.attach(2);
-    escFR.attach(3);
-    escBL.attach(4);
-    escBR.attach(5);
+    escFL.attach(4);
+    escFR.attach(5);
+    escBL.attach(2);
+    escBR.attach(3);
 
     escFL.writeMicroseconds(output);
     escFR.writeMicroseconds(output);
@@ -163,19 +198,25 @@ void loop()
     if (Serial.available())
     {
         char serialInput = Serial.read();
-        if (strcmp(&serialInput, "s") == 0)
+        if (strcmp(&serialInput, "k") == 0)
         {
-            output = 1488;
+            if (motorMode == Disabled)
+            {
+                motorMode = Enabled;
+            }
+
+            else if (motorMode == Enabled)
+            {
+                motorMode = Disabled;
+            }
         }
 
-        if (strcmp(&serialInput, "a") == 0)
+        if (strcmp(&serialInput, " ") == 0)
         {
-            output -= 1;
-        }
-
-        if (strcmp(&serialInput, "d") == 0)
-        {
-            output += 1;
+            if (motorMode != Arm)
+            {
+                motorMode = Disabled;
+            }
         }
     }
     
@@ -198,29 +239,25 @@ void loop()
 
     double alt = bmp.readAltitude(SEALEVELPRESSURE_HPA);
 
-    if (time - motorTime > 10000)
+    if (millis() - armTime > 10000 && motorMode == Arm)
     {
-        motorTime = time;
-
-        if (millis() - armTime > 10000)
-        {
-            motorMode = Disabled;
-        }
+        altitudeSepoint = alt + 1;
+        motorMode = Disabled;
     }
 
     double timeDiff = (double)(time-lastTime) / 1000000.0;
 
-    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.0, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff);
-    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.0, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
+    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.01, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff);
+    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.01, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
     double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.0, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
-    double altOutput   = pidCalculate(alt,       0.0, 0.0, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.3;
+    double altOutput   = pidCalculate(alt, altitudeSepoint, 0.15, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.3;
 
     if (motorMode == Enabled)
     {
-        setMotor(escFL, altOutput + rollOuput + pitchOutput + yawOutput);
-        setMotor(escFR, altOutput - rollOuput + pitchOutput - yawOutput);
-        setMotor(escBL, altOutput + rollOuput - pitchOutput + yawOutput);
-        setMotor(escBR, altOutput - rollOuput - pitchOutput - yawOutput);
+        setMotor(escFL, altOutput + rollOuput + pitchOutput + yawOutput, false);
+        setMotor(escFR, altOutput - rollOuput + pitchOutput - yawOutput, true);
+        setMotor(escBL, altOutput + rollOuput - pitchOutput + yawOutput, true);
+        setMotor(escBR, altOutput - rollOuput - pitchOutput - yawOutput, false);
     }
     else
     {
