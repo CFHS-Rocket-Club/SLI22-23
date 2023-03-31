@@ -3,6 +3,14 @@
 #include <Servo.h>
 #include "Adafruit_BMP3XX.h"
 #include <Adafruit_LSM6DSO32.h>
+#include <SoftwareSerial.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <RH_RF95.h>
+
+//#define CLIENT_ADDRESS 1
+//#define SERVER_ADDRESS 2
+RH_RF95 rf95(10, 7);        // Singleton instance of the radio driver
 
 #define BMP_CS 6
 #define SEALEVELPRESSURE_HPA (1021.3)
@@ -153,6 +161,9 @@ void setup()
     Serial.begin(57600);
     Serial.println("Initialized");
 
+     if (!rf95.init())
+        Serial.println("Radio init failed");
+
     if (!bmp.begin_SPI(BMP_CS)) // hardware SPI mode
     {
         Serial.println("Could not find a valid BMP3 sensor, check wiring!");
@@ -175,10 +186,10 @@ void setup()
     dso32.setAccelDataRate(LSM6DS_RATE_52_HZ);
     dso32.setGyroDataRate(LSM6DS_RATE_12_5_HZ);
 
-    escFL.attach(2);
-    escFR.attach(3);
-    escBL.attach(18);
-    escBR.attach(4);
+    escFL.attach(3);
+    escFR.attach(2);
+    escBL.attach(4);
+    escBR.attach(18);
 
     escFL.writeMicroseconds(output);
     escFR.writeMicroseconds(output);
@@ -197,6 +208,40 @@ void loop()
 {
     uint32_t time = micros();
     double timeDiff = (double)(time-lastTime) / 1000000.0;
+
+ if (rf95.available())
+    {
+        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+        uint8_t len = sizeof(buf);
+
+        if (rf95.recv(buf, &len)) // if "separate" message detected
+        {
+            Serial.println((char*)buf);
+            uint8_t data[] = "Received"; //sending a reply
+            rf95.send(data, sizeof(data));
+
+            if ((char*)buf == "k")
+            {
+             if (motorMode == Disabled)
+            {
+                motorMode = Enabled;
+            }
+
+            else if (motorMode == Enabled)
+            {
+                motorMode = Disabled;
+            }
+            }
+
+            if ((char*)buf == " ")
+            {
+                if (motorMode != Arm)
+            {
+                motorMode = Disabled;
+            }
+            }
+        }
+    }
 
     if (Serial.available())
     {
@@ -258,10 +303,10 @@ void loop()
 
     if (motorMode == Enabled)
     {
-        setMotor(escFL, altOutput + rollOuput + pitchOutput + yawOutput, false);
-        setMotor(escFR, altOutput - rollOuput + pitchOutput - yawOutput, true);
-        setMotor(escBL, altOutput + rollOuput - pitchOutput - yawOutput, true);
-        setMotor(escBR, altOutput - rollOuput - pitchOutput + yawOutput, false);
+          setMotor(escFL, altOutput + rollOuput + pitchOutput + yawOutput, false);
+          setMotor(escFR, altOutput - rollOuput + pitchOutput - yawOutput, true);
+          setMotor(escBL, altOutput + rollOuput - pitchOutput - yawOutput, true);
+          setMotor(escBR, altOutput - rollOuput - pitchOutput + yawOutput, false);
     }
     else
     {
