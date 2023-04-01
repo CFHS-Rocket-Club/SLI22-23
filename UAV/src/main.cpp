@@ -299,10 +299,10 @@ void loop()
 
     
 
-    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.01, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
-    double rollOuput   = pidCalculate(-gyroRoll,  0.0, 0.01, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
-    double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.005, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
-    double altOutput   = pidCalculate(alt, altitudeSepoint, 0.15, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.3;
+    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.00, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
+    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.00, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
+    double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.00, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
+    double altOutput   = pidCalculate(alt, altitudeSepoint, 0.015, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.5;
 
     if (motorMode == Enabled)
     {
