@@ -216,11 +216,8 @@ void loop()
 
         if (rf95.recv(buf, &len)) // if "separate" message detected
         {
-            Serial.println((char*)buf);
-            uint8_t data[] = "Received"; //sending a reply
-            rf95.send(data, sizeof(data));
-
-            if ((char*)buf == "k")
+    
+            if (strcmp((char*)buf, "k") == 0)
             {
              if (motorMode == Disabled)
             {
@@ -232,7 +229,9 @@ void loop()
                 motorMode = Disabled;
             }
             }
-
+            Serial.println((char*)buf);
+           
+/*
             if ((char*)buf == " ")
             {
                 if (motorMode != Arm)
@@ -240,9 +239,12 @@ void loop()
                 motorMode = Disabled;
             }
             }
+            */
         }
     }
 
+
+/*
     if (Serial.available())
     {
         char serialInput = Serial.read();
@@ -267,7 +269,8 @@ void loop()
             }
         }
     }
-    
+    */
+
     if (!bmp.performReading())
     {
         Serial.println("Failed to perform altimeter reading");
