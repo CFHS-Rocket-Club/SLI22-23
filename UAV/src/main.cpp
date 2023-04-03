@@ -138,7 +138,7 @@ void setMotor(Servo motor, double percentOutput)
 {
     // 1488 - 1832
     percentOutput = (percentOutput > 1.0) ? 1.0 : (percentOutput < -1.0) ? -1.0 : percentOutput;
-    motor.writeMicroseconds((int) (1488 + percentOutput*99 ) - (percentOutput < 0 ? 100 : 0));
+    motor.writeMicroseconds((int) (1488 + percentOutput*100 ) - (percentOutput < 0 ? 30 : 0));
 }
 
 void setMotor(Servo motor, double percentOutput, boolean invert)
@@ -299,10 +299,10 @@ void loop()
 
     
 
-    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.00, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
-    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.00, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
-    double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.00, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
-    double altOutput   = pidCalculate(alt, altitudeSepoint, 0.0, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 1.0;
+    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.0, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
+    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.0, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
+    double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.0, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
+    double altOutput   = pidCalculate(alt, altitudeSepoint, 0.0, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 1;
 
     if (motorMode == Enabled)
     {
