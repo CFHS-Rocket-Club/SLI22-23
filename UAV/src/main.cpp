@@ -7,6 +7,7 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <RH_RF95.h>
+#include "TinyGPS++.h"
 
 //#define CLIENT_ADDRESS 1
 //#define SERVER_ADDRESS 2
@@ -32,7 +33,14 @@ uint32_t motorTime = 0;
 uint32_t armTime = 0;
 uint32_t lastTime = 0;
 
+TinyGPSPlus gps;
+
 double altitudeSepoint = 0.0;
+double pitchSetpoint = 0.0;
+
+double targetLat = 0.0;
+double targetLng = 0.0;
+double targetHeading = 0.0;
 
 double velocityX;
 double velocityY;
@@ -45,7 +53,9 @@ enum MotorMode
 {
     Arm,
     Disabled,
-    Enabled
+    Hold,
+    Navigate,
+    Land
 };
 
 MotorMode motorMode = Arm;
@@ -115,6 +125,10 @@ void printData(sensors_event_t temp, sensors_event_t accel, sensors_event_t gyro
         Serial.print("\tYaw: ");
         Serial.println(gyroYaw);
 
+        Serial.println(gps.location.lat(), 8);
+        Serial.println(gps.location.lng(), 8);
+        Serial.println(gps.satellites.value());
+
         switch (motorMode)
         {
         case Arm:
@@ -125,8 +139,17 @@ void printData(sensors_event_t temp, sensors_event_t accel, sensors_event_t gyro
             Serial.println("Disabled");
             break;
 
-        case Enabled:
-            Serial.println("Enabled");
+        case Hold:
+            Serial.println("Hold");
+            break;
+
+        case Navigate:
+            Serial.println("Navigate");
+            break;
+
+        case Land:
+            Serial.println("Land");
+            break;
         
         default:
             break;
@@ -160,6 +183,8 @@ void setup()
 {
     Serial.begin(57600);
     Serial.println("Initialized");
+
+    Serial1.begin(9600);
 
      if (!rf95.init())
         Serial.println("Radio init failed");
@@ -216,20 +241,19 @@ void loop()
 
         if (rf95.recv(buf, &len)) // if "separate" message detected
         {
-    
             if (strcmp((char*)buf, "k") == 0)
             {
-             if (motorMode == Disabled)
-            {
-                motorMode = Enabled;
+                if (motorMode != Arm)
+                {
+                    motorMode = Disabled;
+                }
+                else if (motorMode == Disabled)
+                {
+                    motorMode = Hold;
+                }            
             }
 
-            else if (motorMode == Enabled)
-            {
-                motorMode = Disabled;
-            }
-            }
-            Serial.println((char*)buf);
+            //Serial.println((char*)buf);
            
 /*
             if ((char*)buf == " ")
@@ -243,6 +267,10 @@ void loop()
         }
     }
 
+    while (Serial1.available() > 0)
+    {
+        gps.encode(Serial1.read());
+    }
 
 /*
     if (Serial.available())
@@ -297,19 +325,17 @@ void loop()
         motorMode = Disabled;
     }
 
-    
-
-    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.00, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
-    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.00, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
-    double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.00, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
+    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.0, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
+    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.0, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
+    double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.0, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
     double altOutput   = pidCalculate(alt, altitudeSepoint, 0.015, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.5;
 
-    if (motorMode == Enabled)
+    if (motorMode != Arm && motorMode != Disabled)
     {
-          setMotor(escFL, altOutput + rollOuput + pitchOutput + yawOutput, false);
-          setMotor(escFR, altOutput - rollOuput + pitchOutput - yawOutput, true);
-          setMotor(escBL, altOutput + rollOuput - pitchOutput - yawOutput, true);
-          setMotor(escBR, altOutput - rollOuput - pitchOutput + yawOutput, false);
+        setMotor(escFL, altOutput + rollOuput + pitchOutput + yawOutput, false);
+        setMotor(escFR, altOutput - rollOuput + pitchOutput - yawOutput, true);
+        setMotor(escBL, altOutput + rollOuput - pitchOutput - yawOutput, true);
+        setMotor(escBR, altOutput - rollOuput - pitchOutput + yawOutput, false);
     }
     else
     {
