@@ -252,18 +252,6 @@ void loop()
                     motorMode = Hold;
                 }            
             }
-
-            //Serial.println((char*)buf);
-           
-/*
-            if ((char*)buf == " ")
-            {
-                if (motorMode != Arm)
-            {
-                motorMode = Disabled;
-            }
-            }
-            */
         }
     }
 
@@ -271,33 +259,6 @@ void loop()
     {
         gps.encode(Serial1.read());
     }
-
-/*
-    if (Serial.available())
-    {
-        char serialInput = Serial.read();
-        if (strcmp(&serialInput, "k") == 0)
-        {
-            if (motorMode == Disabled)
-            {
-                motorMode = Enabled;
-            }
-
-            else if (motorMode == Enabled)
-            {
-                motorMode = Disabled;
-            }
-        }
-
-        if (strcmp(&serialInput, " ") == 0)
-        {
-            if (motorMode != Arm)
-            {
-                motorMode = Disabled;
-            }
-        }
-    }
-    */
 
     if (!bmp.performReading())
     {
@@ -321,14 +282,14 @@ void loop()
 
     if (millis() - armTime > 10000 && motorMode == Arm)
     {
-        altitudeSepoint = alt + 1; // 1 meter
+        altitudeSepoint = alt + 0.2; // 1 meter
         motorMode = Disabled;
     }
 
-    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.0, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
-    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.0, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
+    double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.005, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
+    double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.005, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
     double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.0, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
-    double altOutput   = pidCalculate(alt, altitudeSepoint, 0.0, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 1;
+    double altOutput   = pidCalculate(alt, altitudeSepoint, 0.0, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.7;
 
     if (motorMode != Arm && motorMode != Disabled)
     {
