@@ -161,7 +161,7 @@ void setMotor(Servo motor, double percentOutput)
 {
     // 1488 - 1832
     percentOutput = (percentOutput > 1.0) ? 1.0 : (percentOutput < -1.0) ? -1.0 : percentOutput;
-    motor.writeMicroseconds((int) (1488 + percentOutput*100 ) - (percentOutput < 0 ? 30 : 0));
+    motor.writeMicroseconds((int) (1488 + percentOutput*200 ) - (percentOutput < 0 ? 50 : 0));
 }
 
 void setMotor(Servo motor, double percentOutput, boolean invert)
