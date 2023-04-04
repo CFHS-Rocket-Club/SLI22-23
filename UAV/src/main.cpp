@@ -7,10 +7,8 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <RH_RF95.h>
-#include "TinyGPS++.h"
+#include <TinyGPSPlus.h>
 
-//#define CLIENT_ADDRESS 1
-//#define SERVER_ADDRESS 2
 RH_RF95 rf95(10, 7);        // Singleton instance of the radio driver
 
 #define BMP_CS 6
@@ -35,7 +33,7 @@ uint32_t lastTime = 0;
 
 TinyGPSPlus gps;
 
-double altitudeSepoint = 0.0;
+double altitudeSetpoint = 0.0;
 double pitchSetpoint = 0.0;
 
 double targetLat = 0.0;
@@ -94,7 +92,7 @@ void printData(sensors_event_t temp, sensors_event_t accel, sensors_event_t gyro
         Serial.print("Alt: ");
         Serial.print(bmp.readAltitude(SEALEVELPRESSURE_HPA) * 3.28084);
         Serial.print(" ft ");
-        Serial.println(altitudeSepoint * 3.28084);
+        Serial.println(altitudeSetpoint * 3.28084);
 
         Serial.print("Temperature ");
         Serial.print((temp.temperature) * 1.8 + 32);
@@ -282,14 +280,14 @@ void loop()
 
     if (millis() - armTime > 10000 && motorMode == Arm)
     {
-        altitudeSepoint = alt + 0.2; // 1 meter
+        altitudeSetpoint = alt + 0.2; // 1 meter
         motorMode = Disabled;
     }
 
     double pitchOutput = pidCalculate(gyroPitch, 0.0, 0.005, 0.0, 0.0, &pitchPrev, &pitchSum, timeDiff); //Setpoint, P, I, D
     double rollOuput   = pidCalculate(gyroRoll,  0.0, 0.005, 0.0, 0.0, &rollPrev,  &rollSum, timeDiff);
     double yawOutput   = pidCalculate(gyroYaw,   0.0, 0.0, 0.0, 0.0, &yawPrev,   &yawSum, timeDiff);
-    double altOutput   = pidCalculate(alt, altitudeSepoint, 0.0, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.7;
+    double altOutput   = pidCalculate(alt, altitudeSetpoint, 0.0, 0.0, 0.0, &altPrev,   &altSum, timeDiff) + 0.7;
 
     if (motorMode != Arm && motorMode != Disabled)
     {
